@@ -3,43 +3,34 @@
 # Variables
 BACKUPDIR=/mnt/backups
 IMAGEDIR=/mnt/mx500_raid1/libvirt/images
+PHOSTNAME=$(hostnamectl status | grep -w "Pretty hostname:" | awk '{print $3}')
 
-## Functions
-# Full VM backup for VMs with virtual disks
-full_backup () {
-    virsh dumpxml $VM > $BACKUPDIR/$HOSTNAME/$VM/$VM_$(date +"%Y-%m-%d").xml
-    zstd -z -10 -T0 $IMAGEDIR/$VM.qcow2 -o $BACKUPDIR/$HOSTNAME/$VM/$VM_$(date +"%Y-%m-%d").zst
+state () {
+    JOBSTATE=$(virsh domjobinfo "${VM}" | grep -w "Job type:" | awk '{print $3}')
 }
-dom_backup () {
-    virsh dumpxml $VM > $BACKUPDIR/$HOSTNAME/$VM/$VM_$(date +"%Y-%m-%d").xml
-}
-
-## Prerequisite
-# Check if directory does not exist then create it
-
 
 for VM in $(virsh list --all --name); do
 
-if [ ! -d "$BACKUPDIR/$HOSTNAME/$VM" ]; then
-    mkdir -p $BACKUPDIR/$HOSTNAME/$VM
+if [ ! -d "$BACKUPDIR/$PHOSTNAME/$VM" ]; then
+    mkdir -p "$BACKUPDIR/$PHOSTNAME/$VM"
 fi
 
 done
 
 for VM in $(virsh list --all --name); do
-STATE=$(virsh dominfo $VM | grep -w "State:" | awk '{ print $2}')
-if [ $STATE == "shut" ]; then
-    full_backup
+JOBSTATE=$(virsh domjobinfo "${VM}" | grep -w "Job type:" | awk '{print $3}') 
+if [ "$JOBSTATE" == "None" ];  then
+    unset UT
+    virsh dumpxml "${VM}" > "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_$(date +"%Y%m%dT%H%M").xml";
+    export UT=$(date +%s); virsh backup-begin "${VM}"
+    sleep 3
+    state
+    while [ "$JOBSTATE" == "Unbounded" ]; do
+        sleep 5
+        state
+    done
+    mv $IMAGEDIR/"${VM}.qcow2.${UT}" "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_$(date +"%Y%m%dT%H%M").qcow2"
 elif [ ! -f "$IMAGEDIR/$VM.qcow2" ]; then
-    dom_backup
-else
-    echo shutdown
-    virsh shutdown $VM
-    while ([ "$STATE" != "" ] && [ "$STATE" == "running" ]); do
-        sleep 10
-        STATE=$(virsh dominfo $VM | grep -w "State:" | awk '{ print $2}')
-    done;
-    full_backup
-    virsh start $VM
+    virsh dumpxml "${VM}" > "$BACKUPDIR/$PHOSTNAME/$VM/${VM}_$(date +"%Y%m%dT%H%M").xml"
 fi
 done
