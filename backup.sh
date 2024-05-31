@@ -1,21 +1,24 @@
 #!/bin/bash
-
+## Designed for use with https://github.com/abbbi/virtnbdbackup
 # Variables
-BACKUPDIR=/mnt/backups
-IMAGEDIR=/mnt/mx500_raid1/libvirt/images
-PHOSTNAME=$(hostnamectl status | grep -w "Pretty hostname:" | awk '{print $3}')
-CDATE=$(date +"%Y%m%dT%H%M")
+BACKUP_DIR=/mnt/hd0/backups
+CURRENT_DATE=$(date +%Y-%m-%d)
+SYSTEM_HOSTNAME=$(hostname)
 
-state () {
-    JOBSTATE=$(virsh domjobinfo "${VM}" | grep -w "Job type:" | awk '{print $3}')
+# Functions
+system_hostname () {
+    hostnamectl status --static
 }
 
+current_month () {
+    date +%Y-%m
+}
+
+
 for VM in $(virsh list --all --name); do
-
-if [ ! -d "$BACKUPDIR/$PHOSTNAME/$VM" ]; then
-    mkdir -p "$BACKUPDIR/$PHOSTNAME/$VM"
-fi
-
+    if [ ! -d "$BACKUPDIR/$(hostname)/$VM/$(current_month)" ]; then
+        mkdir -p "$BACKUPDIR/$(hostname)/$VM/$(current_month)"
+    fi
 done
 
 for VM in $(virsh list --all --name); do
@@ -35,3 +38,6 @@ elif [ ! -f "$IMAGEDIR/${VM}.qcow2" ]; then
     virsh dumpxml "${VM}" > "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_${CDATE}.xml"
 fi
 done
+
+
+
