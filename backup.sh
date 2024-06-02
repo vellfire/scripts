@@ -1,43 +1,21 @@
 #!/bin/bash
+
 ## Designed for use with https://github.com/abbbi/virtnbdbackup
+
 # Variables
 BACKUP_DIR=/mnt/hd0/backups
-CURRENT_DATE=$(date +%Y-%m-%d)
-SYSTEM_HOSTNAME=$(hostname)
+CURRENT_MONTH=$(date +%Y-%m)
+VM_LIST=$(virsh list --all --name)
+EXCLUDE_LIST=(
+    "Deb-Sid"
+    "Deb-Testing"
+    "SSG"
+    "SSG-Deb"
+)
 
-# Functions
-system_hostname () {
-    hostnamectl status --static
-}
+VM_BACKUP_LIST=$(echo "$VM_LIST" | grep -vE "$(IFS="|"; echo "${EXCLUDE_LIST[*]}")")
 
-current_month () {
-    date +%Y-%m
-}
-
-
-for VM in $(virsh list --all --name); do
-    if [ ! -d "$BACKUPDIR/$(hostname)/$VM/$(current_month)" ]; then
-        mkdir -p "$BACKUPDIR/$(hostname)/$VM/$(current_month)"
-    fi
+for VM in $VM_BACKUP_LIST; do
+    mkdir -p "$BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH"
+    virtnbdbackup -d "$VM" -l auto -o "$BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH" -z
 done
-
-for VM in $(virsh list --all --name); do
-JOBSTATE=$(virsh domjobinfo "${VM}" | grep -w "Job type:" | awk '{print $3}') 
-if [ "$JOBSTATE" == "None" ];  then
-    unset UT
-    virsh dumpxml "${VM}" > "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_${CDATE}.xml";
-    export UT=$(date +%s); virsh backup-begin "${VM}"
-    sleep 3
-    state
-    while [ "$JOBSTATE" == "Unbounded" ]; do
-        sleep 5
-        state
-    done
-    mv $IMAGEDIR/"${VM}.qcow2.${UT}" "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_${CDATE}.qcow2"
-elif [ ! -f "$IMAGEDIR/${VM}.qcow2" ]; then
-    virsh dumpxml "${VM}" > "$BACKUPDIR/$PHOSTNAME/${VM}/${VM}_${CDATE}.xml"
-fi
-done
-
-
-
