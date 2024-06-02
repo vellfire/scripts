@@ -17,6 +17,6 @@ VM_BACKUP_LIST=$(echo "$VM_LIST" | grep -vE "$(IFS="|"; echo "${EXCLUDE_LIST[*]}
 
 # Make directories and run backups
 for VM in $VM_BACKUP_LIST; do
-    mkdir -p "$BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH"
-    virtnbdbackup -U $QEMU_URI -d "$VM" -l auto -o "$BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH" -z
+    mkdir -p $BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH
+    virtnbdbackup -U $QEMU_URI -d $VM -l auto -o $BACKUP_DIR/$HOSTNAME/$VM/$CURRENT_MONTH -z
 done
