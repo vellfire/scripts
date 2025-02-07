@@ -1,0 +1,9 @@
+.vscode/
+
+# Ignore compiled binaries
+*.exe
+*.dll
+
+# Ignore system files
+.DS_Store
+Thumbs.db
